@@ -1,0 +1,64 @@
+#!/bin/sh
+
+pacman_conf_file=/etc/pacman.conf
+
+cache_dir=`awk '/^CacheDir/ {print $3}' $pacman_conf_file`
+
+if [ ! -d "$cache_dir" ]
+then
+    cache_dir=/var/cache/pacman/pkg/
+fi
+
+if [ "${cache_dir: -1}" != '/' ]
+then
+    cache_dir=$cache_dir'/'
+fi
+
+files=`ls $cache_dir`
+
+packages=`pacman -Qs | grep 'local/' | awk '{print $1"-"$2}'`
+
+get_pkg_files()
+{
+    rm_files=()
+    i=0
+    for file in $files
+    do
+        neo_file="${file%\-*.pkg.tar.xz}"
+        if [ `echo $packages | grep $neo_file -c` -eq '0' ]
+        then
+            rm_files[$i]=$file
+            i=$(($i+1))
+        fi
+    done
+
+    echo "${rm_files[*]}"
+}
+
+rm_files=`get_pkg_files`
+
+echo $rm_files
+
+echo 'Confirm to remove these packages, type y|Y|es: (default: yes) '
+
+read flag
+
+rm_pkg_files()
+{
+    rm_files=$*
+    for file in $rm_files
+    do
+        echo 'removing '$cache_dir$file
+        rm $cache_dir$file
+    done
+}
+
+case $flag in
+    ''|'y'|'Y'|'yes'|'Yes')
+        rm_pkg_files $rm_files
+        echo 'fin'
+        ;;
+    *)
+        echo 'Nothing done, quit'
+        ;;
+esac
