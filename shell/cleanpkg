@@ -14,48 +14,53 @@ then
     cache_dir=$cache_dir'/'
 fi
 
-files=`ls $cache_dir`
+files=`find $cache_dir -name '*.pkg.tar.xz' -type f`
 
-packages=`pacman -Qs | grep 'local/' | awk '{print $1"-"$2}'`
+packages=`pacman -Qv | awk '{print $1"-"$2}'`
+
+rm_files=()
+rm_filenames=()
 
 get_pkg_files()
 {
-    rm_files=()
     i=0
     for file in $files
     do
-        neo_file="${file%\-*.pkg.tar.xz}"
-        if [ `echo $packages | grep $neo_file -c` -eq '0' ]
+        file_name=`basename ${file%\-*.pkg.tar.xz}`
+        if [ `echo $packages | grep $file_name -c` -eq '0' ]
         then
             rm_files[$i]=$file
+            rm_filenames[$i]=`basename $file`
             i=$(($i+1))
         fi
     done
-
-    echo "${rm_files[*]}"
 }
 
-rm_files=`get_pkg_files`
+get_pkg_files
 
-echo $rm_files
+if [ "" == "$rm_files" ]
+then
+    echo 'No package needs to remove'
+    exit
+fi
 
-echo 'Confirm to remove these packages, type y|Y|es: (default: yes) '
+echo ${rm_filenames[*]}
+echo 'Confirm to remove the expired packages, type y|Y[es]: (default: no) '
 
 read flag
 
 rm_pkg_files()
 {
-    rm_files=$*
-    for file in $rm_files
+    for file in ${rm_files[*]}
     do
-        echo 'removing '$cache_dir$file
-        rm $cache_dir$file
+        echo 'removing '$file
+        rm $file
     done
 }
 
 case $flag in
-    ''|'y'|'Y'|'yes'|'Yes')
-        rm_pkg_files $rm_files
+    'y'|'Y'|'yes'|'Yes')
+        rm_pkg_files
         echo 'fin'
         ;;
     *)
