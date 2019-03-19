@@ -3,10 +3,16 @@
 pacman_conf_file=/etc/pacman.conf
 
 cache_dir=`awk '/^CacheDir/ {print $3}' $pacman_conf_file`
+db_path=`awk '/^DBPath/ {print $3}' $pacman_conf_file`
 
 if [ ! -d "$cache_dir" ]
 then
     cache_dir=/var/cache/pacman/pkg/
+fi
+
+if [ ! -d "$db_path" ]
+then
+    db_path=/var/lib/pacman
 fi
 
 if [ "${cache_dir: -1}" != '/' ]
@@ -16,7 +22,7 @@ fi
 
 files=`find $cache_dir -name '*.pkg.tar.xz' -type f`
 
-packages=`pacman -Qv | awk '{print $1"-"$2}'`
+packages=`ls $db_path/local`
 
 rm_files=()
 rm_filenames=()
@@ -46,21 +52,11 @@ fi
 
 echo ${rm_filenames[*]}
 echo 'Confirm to remove the expired packages, type y|Y[es]: (default: no) '
-
 read flag
-
-rm_pkg_files()
-{
-    for file in ${rm_files[*]}
-    do
-        echo 'removing '$file
-        rm $file
-    done
-}
 
 case $flag in
     'y'|'Y'|'yes'|'Yes')
-        rm_pkg_files
+        rm -v ${rm_files[*]}
         echo 'fin'
         ;;
     *)
